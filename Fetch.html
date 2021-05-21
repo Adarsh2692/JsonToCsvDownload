@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+	<body>
+		<form>
+			<input
+				list="dlist"
+				name="browser"
+				id="browser"
+				autocomplete="off"
+				value=""
+			/>
+			<datalist id="dlist"> </datalist>
+			<button type="button" onclick="search()">Submit</button>
+		</form>
+
+		<script>
+			let arr = [];
+			let i;
+			let change = document.getElementById('browser');
+			change.addEventListener('input', async () => {
+				let list = document.getElementById('dlist');
+				list.innerHTML = '';
+				if (!change.value == '') {
+					let res = await fetch(
+						`https://data.brreg.no/enhetsregisteret/api/enheter?navn=${change.value}`
+					);
+					let val = await res.json();
+					let set = new Set();
+					val._embedded.enheter.map((value) => {
+						set.add(value);
+						console.log('hii ' + value);
+					});
+					list.innerHTML = '';
+					set.forEach((value) => {
+						console.log(value.navn);
+						let option = document.createElement('option');
+						option.value = value.navn + '(' + value.organisasjonsnummer + ')';
+						arr.push(value);
+						option.id = value.organisasjonsnummer;
+						list.appendChild(option);
+					});
+					console.log(val._embedded.enheter, set);
+				}
+			});
+
+			let search = async () => {
+				let val = document.getElementById('browser').value;
+				let num = Number(
+					val.substr(val.indexOf('(') + 1, val.length - val.indexOf('(') - 2)
+				);
+				console.log(num);
+				for (i = 0; i < arr.length; i++) {
+					if (arr[i].organisasjonsnummer == num) {
+						downloadObjectAsJson(arr[i], val);
+						break;
+					}
+				}
+			};
+
+			function arrayToCSV(data) {
+				csv = data.map((row) => Object.values(row));
+				csv.unshift(Object.keys(data[0]));
+				return csv.join('\n');
+			}
+
+			const flattenJSON = (obj, res = {}, extraKey = '') => {
+				for (key in obj) {
+					if (typeof obj[key] !== 'object') {
+						res[extraKey + key] = obj[key];
+					} else {
+						flattenJSON(obj[key], res, `${extraKey}${key}.`);
+					}
+				}
+				return res;
+			};
+
+			function downloadObjectAsJson(exportObj, exportName) {
+                let jvalue=flattenJSON(exportObj);
+                let kvalue=[jvalue];
+                let csv = arrayToCSV(kvalue);
+				var dataStr =
+					'data:text/csv;charset=utf-8,' +
+					escape(csv);//JSON.stringify(exportObj, null, 4)
+				var a = document.createElement('a');
+				a.setAttribute('href', dataStr);
+				a.setAttribute('download', exportName + '.csv');
+				document.body.appendChild(a);
+				a.click();
+				a.remove();
+			}
+		</script>
+	</body>
+</html>
